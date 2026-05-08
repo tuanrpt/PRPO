@@ -1,6 +1,15 @@
+<p align="center">
+  <img src="../figs/logo.png" alt="PRPO Logo" width="200"/>
+</p>
+
 # PRPO: Paragraph-level Policy Optimization for Vision-Language Deepfake Detection
 
-This repository contains the implementation of PRPO (Paragraph-level Relative Policy Optimization), a test-time reinforcement learning algorithm that aligns MLLM reasoning with image content at the paragraph level.
+![GitHub top language](https://img.shields.io/github/languages/top/tuanrpt/PRPO?style=for-the-badge)
+![GitHub last commit](https://img.shields.io/github/last-commit/tuanrpt/PRPO?style=for-the-badge)
+![GitHub repo size](https://img.shields.io/github/repo-size/tuanrpt/PRPO?style=for-the-badge)
+![GitHub license](https://img.shields.io/github/license/tuanrpt/PRPO?style=for-the-badge)
+
+This repository contains the implementation of PRPO ([Paragraph-level Relative Policy Optimization](https://arxiv.org/abs/2509.26272)), a test-time reinforcement learning algorithm that aligns MLLM reasoning with image content at the paragraph level.
 
 ## Overview
 
