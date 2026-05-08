@@ -1,0 +1,114 @@
+# TTRL PPO Trainer Configuration with PRPO (Paragraph-level GRPO)
+# This config extends the base TTRL configuration with paragraph-level optimization
+
+defaults:
+  - ppo_trainer_ttrl  # Inherit from base TTRL config
+  - _self_
+
+# PRPO-specific configuration
+prpo:
+  enable: true                    # Enable paragraph-level GRPO
+  clip_eps: 0.2                   # PPO clipping parameter for paragraphs
+  normalize_adv: true             # Normalize advantages per group
+  kl_coef: 0.01                   # KL penalty coefficient
+  entropy_coef: 0.0               # Entropy bonus coefficient
+  min_paragraphs: 1               # Minimum paragraphs per response
+  max_paragraphs: 7               # Maximum paragraphs to consider
+  clip_threshold: 0.55            # CLIP similarity threshold for binary reward
+  combined_threshold: 0.525       # Combined reward threshold for binary output
+  debug: false                    # Enable PRPO debugging output
+  
+  # Paragraph processing settings
+  paragraph_min_length: 20        # Minimum character length for valid paragraphs
+  paragraph_split_pattern: '\n\s*\n|\*\*[^*]+\*\*:|\d+\.\s+'  # Regex for paragraph splitting
+  
+  # CLIP similarity settings (for paragraph rewards) 
+  clip_model: "convnext_large_d_320"
+  clip_weight: 0.5                # Weight of CLIP similarity in reward
+  consistency_weight: 0.3         # Weight of internal consistency in reward
+  quality_weight: 0.2             # Weight of semantic quality in reward
+  
+  # Grouping strategy for paragraphs
+  group_by: "response"            # Group paragraphs by response ("response", "prompt", "sample")
+  
+  # Advanced PRPO settings
+  use_paragraph_attention: false  # Use attention weights for paragraph importance
+  adaptive_weights: false         # Adapt reward component weights during training
+
+# Modified training parameters for PRPO
+actor_rollout_ref:
+  actor:
+    ppo_micro_batch_size_per_gpu: 1  # Smaller micro-batch for paragraph precision
+    use_kl_loss: true             # Enable KL loss like TTRL-origin GRPO
+    kl_loss_coef: 0.001           # KL loss coefficient like TTRL-origin
+    kl_loss_type: low_var_kl      # KL divergence loss type
+    optim:
+      lr: 3e-7                    # Lower learning rate for fine-grained optimization
+  
+  # Reference model configuration (like TTRL-origin GRPO)
+  ref:
+    strategy: ${actor_rollout_ref.actor.strategy}  # Same strategy as actor
+    fsdp_config:
+      param_offload: true         # Offload reference model parameters to save memory
+      reshard_after_forward: true # Reshard after forward pass
+      wrap_policy:
+        min_num_params: 0
+    use_torch_compile: ${actor_rollout_ref.actor.use_torch_compile}
+    log_prob_micro_batch_size_per_gpu: null
+    log_prob_use_dynamic_bsz: ${actor_rollout_ref.actor.use_dynamic_bsz}
+    log_prob_max_token_len_per_gpu: ${actor_rollout_ref.actor.ppo_max_token_len_per_gpu}
+    ulysses_sequence_parallel_size: ${actor_rollout_ref.actor.ulysses_sequence_parallel_size}
+  
+  rollout:
+    temperature: 1.0              # Slightly higher temperature for paragraph diversity
+    n: 32                         # Reduced votes per prompt for paragraph focus
+    calculate_log_probs: true     # Enable log-probability computation for PRPO
+
+# Data configuration adjustments
+data:
+  train_batch_size: 8             # Smaller batch size for paragraph-level training
+
+# Algorithm adjustments for PRPO
+algorithm:
+  adv_estimator: prpo             # Use PRPO (Paragraph-level GRPO)
+  
+# Custom reward function for PRPO
+custom_reward_function:
+  path: "./verl/utils/reward_score/deepfake_detection_prpo_standalone.py"
+  name: reward_func
+
+# PRPO reward model configuration
+reward_model:
+  enable: false  # Use custom reward function only
+  reward_manager: prpo  # Use PRPO-aware reward manager
+  launch_reward_fn_async: false
+
+# TTRL settings (preserved from base config)
+ttrl:
+  enable: true
+  n_votes_per_prompt: 32
+  n_samples_per_prompt: 16
+
+# Trainer configuration for PRPO
+trainer:
+  project_name: "ttrl-llava-prpo"
+  save_freq: 50                   # More frequent saves for paragraph-level monitoring
+  test_freq: 25                   # More frequent validation
+  total_epochs: 5                 # More epochs for paragraph convergence
+  
+  # Enhanced logging for PRPO
+  log_paragraph_rewards: true     # Log individual paragraph rewards
+  log_clip_similarities: true     # Log CLIP similarity scores
+  log_consistency_scores: true    # Log internal consistency scores
+
+# Validation configuration
+validation:
+  enable_paragraph_analysis: true # Analyze paragraph-level performance
+  compute_clip_metrics: true      # Compute CLIP-based validation metrics
+  save_paragraph_examples: true   # Save examples of paragraph rewards
+
+# Debug and monitoring
+monitoring:
+  track_paragraph_distribution: true  # Track paragraph count distribution
+  track_reward_components: true      # Track individual reward components
+  visualize_paragraph_rewards: true  # Create visualizations of paragraph rewards

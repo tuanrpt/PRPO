@@ -1,6 +1,7 @@
 # PRPO: Paragraph-level Policy Optimization for Vision-Language Deepfake Detection
 
-This repository provides the official implementation of **PRPO** (Paragraph-level Relative Policy Optimization), a reinforcement learning framework designed to improve reasoning and detection accuracy in vision-language deepfake detection tasks.
+This repository provides the official implementation of **PRPO** (Paragraph-level Relative Policy Optimization), a reinforcement learning framework designed to improve reasoning and detection accuracy in vision-language deepfake detection tasks. The paper has been accepted at ICML 2026.
+
 
 ## Overview
 
@@ -136,10 +137,12 @@ export CUDA_LAUNCH_BLOCKING=1
 If you use this work in your research, please cite:
 
 ```bibtex
-@article{prpo2025tuan,
-   title={PRPO: Paragraph-level Policy Optimization for Vision-Language Deepfake Detection}, 
-   author={Tuan Nguyen and Naseem Khan and Khang Tran and NhatHai Phan and Issa Khalil},
-   year={2025},
+@inproceedings{tuan2026prpo,
+title={{PRPO}: Paragraph-level Policy Optimization for Vision-Language Deepfake Detection},
+author={Tuan Nguyen and Naseem Khan and Khang Tran and NhatHai Phan and Issa Khalil},
+booktitle={Forty-third International Conference on Machine Learning},
+year={2026},
+url={https://openreview.net/forum?id=BGcw0KWStP}
 }
 ```
 

@@ -1,0 +1,82 @@
+# Original Copyright (c) 2023 PRIME-RL (TTRL)
+# Modifications Copyright (c) 2025 Tuan Nguyen
+#
+# This file is modified from TTRL: https://github.com/PRIME-RL/TTRL
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+"""
+Contains a resharding manager that binds weights from FSDP zero3 to XPerfGPT
+"""
+
+from torch.distributed.device_mesh import DeviceMesh
+
+from verl import DataProto
+from verl.protocol import all_gather_data_proto
+from verl.utils.ulysses import get_ulysses_sequence_parallel_group, set_ulysses_sequence_parallel_group
+
+from .base import BaseShardingManager
+
+
+class FSDPUlyssesShardingManager(BaseShardingManager):
+    """
+    Sharding manager to support data resharding when using FSDP + Ulysses
+    """
+
+    def __init__(self, device_mesh: DeviceMesh):
+        super().__init__()
+        self.device_mesh = device_mesh
+        self.seed_offset = 12345
+
+    def __enter__(self):
+        if self.device_mesh is not None:
+            # We have a global SP group
+            # so we have to change to use model-specific sp group
+            self.prev_sp_group = get_ulysses_sequence_parallel_group()
+            set_ulysses_sequence_parallel_group(self.device_mesh["sp"].get_group())
+            # TODO: check how to set seed for each model
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        # restore random states
+        if self.device_mesh is not None:
+            # revert to previous sp group
+            set_ulysses_sequence_parallel_group(self.prev_sp_group)
+            # TODO: check how to set seed for each model
+
+    def preprocess_data(self, data: DataProto) -> DataProto:
+        """
+        AllGather data from sp region
+        This is because the data is first sharded along the FSDP dimension as we utilize the DP_COMPUTE
+        In Ulysses, we need to make sure the same data is used across a SP group
+        """
+        if self.device_mesh is not None:
+            group = self.device_mesh["sp"].get_group()
+
+            all_gather_data_proto(data=data, process_group=group)
+        return data
+
+    def postprocess_data(self, data: DataProto) -> DataProto:
+        """
+        Split the data to follow FSDP partition
+        """
+        if self.device_mesh is not None:
+            sp_size = self.device_mesh["sp"].size()
+            sp_rank = self.device_mesh["sp"].get_local_rank()
+            data = data.chunk(chunks=sp_size)[sp_rank]
+        return data

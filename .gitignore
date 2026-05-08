@@ -24,6 +24,7 @@ MANIFEST
 # Virtual environments
 .env
 .venv
+.claude/
 env/
 venv/
 ENV/
@@ -43,7 +44,6 @@ checkpoints/
 output/
 runs/
 wandb/
-prpo/
 hugging_face/
 
 # Data
